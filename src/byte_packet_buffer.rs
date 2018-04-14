@@ -13,7 +13,7 @@ impl BytePacketBuffer {
         }
     }
 
-    fn pos(&self) -> usize {
+    pub fn pos(&self) -> usize {
         self.pos
     }
 
@@ -101,6 +101,58 @@ impl BytePacketBuffer {
         if !jumped {
             try!(self.seek(pos));
         }
+
+        Ok(())
+    }
+
+    fn write(&mut self, val: u8) -> Result<(), Error> {
+        if self.pos >= 512 {
+            return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
+        }
+        self.buf[self.pos] = val;
+        self.pos += 1;
+        Ok(())
+    }
+
+    pub fn write_u8(&mut self, val: u8) -> Result<(), Error> {
+        try!(self.write(val));
+        Ok(())
+    }
+
+    pub fn write_u16(&mut self, val: u16) -> Result<(), Error> {
+        try!(self.write((val >> 8) as u8));
+        try!(self.write((val & 0xFF) as u8));
+        Ok(())
+    }
+
+    pub fn write_u32(&mut self, val: u32) -> Result<(), Error> {
+        try!(self.write(((val >> 24) & 0xFF) as u8));
+        try!(self.write(((val >> 16) & 0xFF) as u8));
+        try!(self.write(((val >> 8) & 0xFF) as u8));
+        try!(self.write(((val >> 0) & 0xFF) as u8));
+        Ok(())
+    }
+
+    pub fn write_qname(&mut self, qname: &str) -> Result<(), Error> {
+        // let splitted_str = qname.split('.').collect::<Vec<&str>>();
+        let splitted_str = qname.split('.');
+        for label in splitted_str {
+            let len = label.len();
+            if len > 0x34 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "Single label exceeds 63 character of length",
+                ));
+            }
+
+            try!(self.write_u8(len as u8));
+
+            for b in label.as_bytes() {
+                try!(self.write_u8(*b));
+            }
+        }
+
+        try!(self.write_u8(0));
 
         Ok(())
     }
