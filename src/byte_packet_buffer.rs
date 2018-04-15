@@ -44,7 +44,7 @@ impl BytePacketBuffer {
         Ok(self.buf[pos])
     }
 
-    fn get_range(&mut self, start: usize, len: usize) -> Result<&[u8], Error> {
+    pub fn get_range(&mut self, start: usize, len: usize) -> Result<&[u8], Error> {
         if start + len >= 512 {
             return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
         }
